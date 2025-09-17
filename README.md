@@ -45,14 +45,6 @@ password
 
 _⚠️ I’d suggest you change it before using._
 
-📂 Project Structure
-
-personal-wallet/
-│
-├── wallet.py            # Main script
-├── wallet_secure.db     # Encrypted database (generated after first run)
-└── README.md            # Project documentation
-
 
 ## 🛠️ Roadmap
 
