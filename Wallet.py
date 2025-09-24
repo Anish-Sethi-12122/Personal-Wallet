@@ -51,7 +51,7 @@ def hash_wallet_address(wallet_address: str) -> str:
     return digest.finalize().hex()
 
 def generate_wallet():
-    wallet_addr = 'IND' + str(randint(1000000000000000, 9999999999999999))
+    wallet_addr = 'IND' + '-' + str(randint(1000000000000000, 9999999999999999))
     Print(f"Your wallet address is: {wallet_addr}\nSave it for future reference", "MAGENTA")
     print('\n')
     wallet_hash = hash_wallet_address(wallet_addr)
