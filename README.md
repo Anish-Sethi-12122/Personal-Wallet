@@ -27,16 +27,16 @@ Create your own wallet, store and update your balance, and keep everything safe 
 ## 🚀 Getting Started
 
 **1. Clone the repository**  
-git clone https://github.com/your-username/personal-wallet.git <br>
-cd personal-wallet  
+`git clone https://github.com/your-username/personal-wallet.git <br>`
+`cd personal-wallet  `
 
 
 **2. Install Python dependencies**  
-pip install rich cryptography <br>
+`pip install rich cryptography` <br>
 
 
 **3. Run the wallet application**  
-python wallet.py <br>
+`python wallet.py` <br>
 
 
 ---
