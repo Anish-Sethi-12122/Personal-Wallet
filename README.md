@@ -27,7 +27,7 @@ Create your own wallet, store and update your balance, and keep everything safe 
 ## 🚀 Getting Started
 
 **1. Clone the repository**  
-`git clone https://github.com/your-username/personal-wallet.git <br>`
+`git clone https://github.com/your-username/personal-wallet.git` <br>
 `cd personal-wallet  `
 
 
