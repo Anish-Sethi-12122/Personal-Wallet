@@ -7,6 +7,7 @@ from rich.text import Text
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import sqlite3 as sql
 
 COLOR_MAP = {
     "CYAN": "bright_cyan",
@@ -17,14 +18,16 @@ COLOR_MAP = {
     "MAGENTA": "bright_magenta"
 }
 console = Console()
+wallet_address = None
+conn = None
+cur = None
 
 def Print(message, color_key="WHITE", style=""):
     color = COLOR_MAP.get(color_key, "white")
-    styled_text = Text("", style=f"{style} {color}")
     for char in message:
-        styled_text.append(char)
         console.print(char, style=f"{style} {color}", end="")
         time.sleep(0.02069)
+    console.print("")
 
 def ask_continue():
     Print("Would you like to continue? (y/n): ", "YELLOW", "bold")
@@ -38,42 +41,9 @@ def ask_continue():
     print('\n')
     return choice == 'y'
 
-def main():
-    global choice
-    while choice:
-        Print("What would you like to do?", "MAGENTA")
-        print('\n')
-        Print("1. View balance", "CYAN")
-        print('\n')
-        Print("2. Add funds", "CYAN")
-        print('\n')
-        Print("3. Withdraw funds", "CYAN")
-        print('\n')
-        Print("4. Exit", "CYAN")
-        print('\n')
-        Print("Enter the number of your choice: ", "YELLOW", "bold")
-        choice = input()
-        print('\n')
-        while choice not in ['1', '2', '3', '4']:
-            Print("Invalid choice. Please enter a number between 1 and 4.", "RED", "bold")
-            print('\n')
-            Print("Enter the number of your choice: ", "YELLOW")
-            choice = input()
-            print('\n')
-        if choice == '1':
-            balance()
-        elif choice == '2':
-            add_balance()
-        elif choice == '3':
-            withdraw_balance()
-        elif choice == '4':
-            Print("Thank you for using your personal wallet!", "GREEN", "bold")
-            print('\n')
-            sys.exit()
-        choice = ask_continue()
-
-def balance():
-    pass  # to implement
+def pass_check():
+    Print("Enter password to authenticate: ", "CYAN")
+    return input() == "password"
 
 def hash_wallet_address(wallet_address: str) -> str:
     digest = hashes.Hash(hashes.SHA256())
@@ -81,45 +51,96 @@ def hash_wallet_address(wallet_address: str) -> str:
     return digest.finalize().hex()
 
 def generate_wallet():
-    wallet_address = 'IND' + str(randint(1000000000000000, 9999999999999999))
-    Print(f"Your wallet address is: {wallet_address}\nSave it for future reference", "MAGENTA")
+    wallet_addr = 'IND' + str(randint(1000000000000000, 9999999999999999))
+    Print(f"Your wallet address is: {wallet_addr}\nSave it for future reference", "MAGENTA")
     print('\n')
-    wallet_hash = hash_wallet_address(wallet_address)
-    return wallet_hash
+    wallet_hash = hash_wallet_address(wallet_addr)
+    return wallet_hash, wallet_addr
 
 def create_wallet():
-    wallet_hash = generate_wallet()
+    global wallet_address
+    wallet_hash, wallet_address = generate_wallet()
     Print("Enter your name: ", "YELLOW", "bold")
     name = input()
     print('\n')
-    wallet = (wallet_hash, name, 0.0)
-    return wallet
-
-def retrieve():
-    pass  # to implement
-
-def add_balance():
-    pass  # to implement
-
-def withdraw_balance():
-    pass  # to implement
+    cur.execute("INSERT INTO wallet (wallet_address, name, current_balance) VALUES (?, ?, ?)",
+                (wallet_hash, name, 0.0))
+    conn.commit()
 
 def database_wallet():
-    import sqlite3 as sql
+    global cur, conn, wallet_address
     conn = sql.connect('wallet.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS wallet
-                 (
-                     wallet_address TEXT PRIMARY KEY,
-                     name TEXT,
-                     current_balance REAL DEFAULT 0.0
-                 )''')
+    cur = conn.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS wallet
+                   (
+                       wallet_address TEXT PRIMARY KEY,
+                       name TEXT,
+                       current_balance REAL DEFAULT 0.0
+                   )''')
     conn.commit()
-    c.execute("SELECT COUNT(*) FROM wallet")
-    if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO wallet (wallet_address, name, current_balance) VALUES (?, ?, ?)", create_wallet())
-        conn.commit()
-    conn.close()
+    cur.execute("SELECT COUNT(*) FROM wallet")
+    if cur.fetchone()[0] == 0:
+        create_wallet()
+    else:
+        cur.execute("SELECT wallet_address FROM wallet LIMIT 1")
+        wallet_address = cur.fetchone()[0]
+
+def balance():
+    Print("----- Option to Check Balance chosen -----", 'YELLOW', "bold")
+    print('\n')
+    if not pass_check():
+        Print("Incorrect Master Password..", "RED", "bold")
+        print('\n')
+        return
+    cur.execute("SELECT * FROM wallet WHERE wallet_address = ?", (wallet_address,))
+    data = cur.fetchone()
+    if data:
+        Print(f"Your current balance is: ₹{data[2]:.2f}", "MAGENTA")
+        print('\n')
+    else:
+        Print("Wallet not found!", "RED", "bold")
+
+def add_balance():
+    Print("----- Option to Add Balance chosen -----", "YELLOW", "bold")
+    print('\n')
+    Print("Enter amount to add: ", "YELLOW", "bold")
+    amount = float(input())
+    print('\n')
+    cur.execute("UPDATE wallet SET current_balance = current_balance + ? WHERE wallet_address = ?", (amount, wallet_address))
+    conn.commit()
+    Print(f"₹{amount:.2f} added to your balance.", "GREEN", "bold")
+    print('\n')
+
+def withdraw_balance():
+    Print("----- Option to Withdraw Balance chosen -----", "YELLOW", "bold")
+    print('\n')
+    if not pass_check():
+        Print("Incorrect Master Password..", "RED", "bold")
+        print('\n')
+        return
+    cur.execute("SELECT * FROM wallet WHERE wallet_address = ?", (wallet_address,))
+    data = cur.fetchone()
+    if not data:
+        Print("Wallet not found!", "RED", "bold")
+        return
+    Print(f"Your current balance is: ₹{data[2]:.2f}", "MAGENTA")
+    print('\n')
+    Print("Enter amount to withdraw: ", "BLUE")
+    amount = float(input())
+    while amount > data[2] or amount <= 0:
+        if amount > data[2]:
+            Print(f"Insufficient funds. Your balance is ₹{data[2]:.2f}.", "RED", "bold")
+        else:
+            Print("Invalid amount. Must be positive.", "MAGENTA")
+        print('\n')
+        Print("Enter amount to withdraw: ", "BLUE")
+        amount = float(input())
+    Print(f"Withdrawing: ₹{amount:.2f}.....", "MAGENTA")
+    time.sleep(2)
+    cur.execute("UPDATE wallet SET current_balance = current_balance - ? WHERE wallet_address = ?", (amount, wallet_address))
+    conn.commit()
+    Print("Withdrawal successful.", "GREEN", "bold")
+    print('\n')
 
 def encrypt_file(in_file: str, password: str, out_file: str = "wallet_secure.db"):
     salt = os.urandom(16)
@@ -154,21 +175,44 @@ def decrypt_file(enc_file: str, password: str, out_file: str = "wallet.db"):
     with open(out_file, "wb") as f:
         f.write(data)
 
+def main():
+    while True:
+        Print("----- Main Menu -----", "YELLOW", "bold")
+        print('\n')
+        Print("1. View balance", "CYAN")
+        Print("2. Add funds", "CYAN")
+        Print("3. Withdraw funds", "CYAN")
+        Print("4. Exit", "CYAN")
+        Print("Enter the number of your choice: ", "YELLOW", "bold")
+        user_choice = input()
+        while user_choice not in ['1', '2', '3', '4']:
+            Print("Invalid choice. Enter 1-4.", "RED", "bold")
+            user_choice = input()
+        if user_choice == '1':
+            balance()
+        elif user_choice == '2':
+            add_balance()
+        elif user_choice == '3':
+            withdraw_balance()
+        elif user_choice == '4':
+            Print("Thank you for using your personal wallet!", "GREEN", "bold")
+            print('\n')
+            sys.exit()
+        if not ask_continue():
+            break
+
 if __name__ == "__main__":
     Print("Welcome to INDIA DEMO BANK e-Pay!", "YELLOW", "bold")
     print('\n')
-    Print("Enter your master password to access the wallet (Master password is: password): ", "YELLOW", "bold")
+    Print("Enter your master password to access the wallet (Master password is: password -- REMEMBER ME): ", "YELLOW", "bold")
     master_password = input()
     print('\n')
     if master_password != "password":
         Print("Access denied. Wrong master password.", "RED", "bold")
-        print('\n')
         sys.exit()
     if os.path.exists("wallet_secure.db"):
         decrypt_file("wallet_secure.db", master_password)
-    choice = 'y'
     database_wallet()
     main()
     if os.path.exists("wallet.db"):
         encrypt_file("wallet.db", master_password)
-        os.remove("wallet.db")
