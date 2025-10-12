@@ -76,3 +76,18 @@ Licensed under the MIT License.
 
 This project is for learning and demonstration only.  
 **Do not use it to store real financial data or cryptocurrencies.**
+
+---
+
+## 🧑‍💻 Author
+
+Anish Sethi  
+B.Tech CSE Student  
+
+💼 [LinkedIn](https://www.linkedin.com/in/anish-sethi-dtu-cse/)  
+⭐ Don’t forget to star the repo if you like it!  
+
+---
+
+### 🪪 License
+This project is licensed under the MIT License — feel free to use, modify, and share.
